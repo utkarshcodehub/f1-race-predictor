@@ -12,11 +12,12 @@ with open(css_path) as f:
 
 @st.cache_data
 def load_data():
-    results      = pd.read_csv('../data/raw/results.csv').replace('\\N', np.nan)
-    drivers      = pd.read_csv('../data/raw/drivers.csv')
-    constructors = pd.read_csv('../data/raw/constructors.csv')
-    races        = pd.read_csv('../data/raw/races.csv')
-    circuits     = pd.read_csv('../data/raw/circuits.csv')
+    ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    results      = pd.read_csv(os.path.join(ROOT, 'data', 'raw', 'results.csv')).replace('\\N', np.nan)
+    drivers      = pd.read_csv(os.path.join(ROOT, 'data', 'raw', 'drivers.csv'))
+    constructors = pd.read_csv(os.path.join(ROOT, 'data', 'raw', 'constructors.csv'))
+    races        = pd.read_csv(os.path.join(ROOT, 'data', 'raw', 'races.csv'))
+    circuits     = pd.read_csv(os.path.join(ROOT, 'data', 'raw', 'circuits.csv'))
     results['positionOrder'] = pd.to_numeric(results['positionOrder'], errors='coerce')
     results['points']        = pd.to_numeric(results['points'],        errors='coerce')
     results['grid']          = pd.to_numeric(results['grid'],          errors='coerce')

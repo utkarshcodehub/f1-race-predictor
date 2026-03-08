@@ -16,18 +16,14 @@ with open(css_path) as f:
 # ── Load data & model ──────────────────────────────────────────
 @st.cache_resource
 def load_all():
-    xgb        = joblib.load('../models/xgboost.pkl')
-    df         = pd.read_csv('../data/processed/f1_features.csv')
-    df_history = pd.read_csv('../data/raw/results.csv').replace('\\N', np.nan)
-    df_history['positionOrder'] = pd.to_numeric(df_history['positionOrder'], errors='coerce')
-    raw_races        = pd.read_csv('../data/raw/races.csv')
-    raw_drivers      = pd.read_csv('../data/raw/drivers.csv')
-    raw_constructors = pd.read_csv('../data/raw/constructors.csv')
-    raw_circuits     = pd.read_csv('../data/raw/circuits.csv')
-
-    le_driver      = LabelEncoder().fit(df['driverId'].astype(str))
-    le_constructor = LabelEncoder().fit(df['constructorId'].astype(str))
-    le_circuit     = LabelEncoder().fit(df['circuitId'].astype(str))
+    ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    xgb        = joblib.load(os.path.join(ROOT, 'models', 'xgboost.pkl'))
+    df         = pd.read_csv(os.path.join(ROOT, 'data', 'processed', 'f1_features.csv'))
+    df_history = pd.read_csv(os.path.join(ROOT, 'data', 'raw', 'results.csv')).replace('\\N', np.nan)
+    raw_races        = pd.read_csv(os.path.join(ROOT, 'data', 'raw', 'races.csv'))
+    raw_drivers      = pd.read_csv(os.path.join(ROOT, 'data', 'raw', 'drivers.csv'))
+    raw_constructors = pd.read_csv(os.path.join(ROOT, 'data', 'raw', 'constructors.csv'))
+    raw_circuits     = pd.read_csv(os.path.join(ROOT, 'data', 'raw', 'circuits.csv'))
 
     return (xgb, df, df_history, raw_races, raw_drivers,
             raw_constructors, raw_circuits,
@@ -77,7 +73,8 @@ def get_driver_features(driver_id, constructor_id, circuit_id,
 
 # ── Dropdowns ──────────────────────────────────────────────────
 recent_race_ids   = raw_races[raw_races['year'] >= raw_races['year'].max() - 3]['raceId']
-recent_results    = pd.read_csv('../data/raw/results.csv').replace('\\N', np.nan)
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+recent_results    = pd.read_csv(os.path.join(ROOT, 'data', 'raw', 'results.csv')).replace('\\N', np.nan)
 recent_driver_ids = recent_results[recent_results['raceId'].isin(recent_race_ids)]['driverId'].unique()
 recent_con_ids    = recent_results[recent_results['raceId'].isin(recent_race_ids)]['constructorId'].unique()
 

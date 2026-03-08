@@ -16,10 +16,11 @@ with open(css_path) as f:
 
 @st.cache_resource
 def load_models_and_data():
-    lr  = joblib.load('../models/linear_regression.pkl')
-    rf  = joblib.load('../models/random_forest.pkl')
-    xgb = joblib.load('../models/xgboost.pkl')
-    df  = pd.read_csv('../data/processed/f1_features.csv')
+   ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    lr  = joblib.load(os.path.join(ROOT, 'models', 'linear_regression.pkl'))
+    rf  = joblib.load(os.path.join(ROOT, 'models', 'random_forest.pkl'))
+    xgb = joblib.load(os.path.join(ROOT, 'models', 'xgboost.pkl'))
+    df  = pd.read_csv(os.path.join(ROOT, 'data', 'processed', 'f1_features.csv'))
 
     for col in ['driverId', 'constructorId', 'circuitId']:
         df[col] = LabelEncoder().fit_transform(df[col].astype(str))
