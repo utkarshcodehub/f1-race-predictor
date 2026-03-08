@@ -2,28 +2,32 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
+import os
 import plotly.express as px
 import plotly.graph_objects as go
 from sklearn.preprocessing import LabelEncoder
 
 st.set_page_config(page_title="Prediction", page_icon="🎯", layout="wide")
 
-import os
 css_path = os.path.join(os.path.dirname(__file__), '..', 'style.css')
 with open(css_path) as f:
     st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 
-# ── Load data & model ──────────────────────────────────────────
 @st.cache_resource
 def load_all():
-    ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    xgb        = joblib.load(os.path.join(ROOT, 'models', 'xgboost.pkl'))
-    df         = pd.read_csv(os.path.join(ROOT, 'data', 'processed', 'f1_features.csv'))
-    df_history = pd.read_csv(os.path.join(ROOT, 'data', 'raw', 'results.csv')).replace('\\N', np.nan)
-    raw_races        = pd.read_csv(os.path.join(ROOT, 'data', 'raw', 'races.csv'))
-    raw_drivers      = pd.read_csv(os.path.join(ROOT, 'data', 'raw', 'drivers.csv'))
-    raw_constructors = pd.read_csv(os.path.join(ROOT, 'data', 'raw', 'constructors.csv'))
-    raw_circuits     = pd.read_csv(os.path.join(ROOT, 'data', 'raw', 'circuits.csv'))
+    ROOT            = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    xgb             = joblib.load(os.path.join(ROOT, 'models', 'xgboost.pkl'))
+    df              = pd.read_csv(os.path.join(ROOT, 'data', 'processed', 'f1_features.csv'))
+    df_history      = pd.read_csv(os.path.join(ROOT, 'data', 'raw', 'results.csv')).replace('\\N', np.nan)
+    df_history['positionOrder'] = pd.to_numeric(df_history['positionOrder'], errors='coerce')
+    raw_races       = pd.read_csv(os.path.join(ROOT, 'data', 'raw', 'races.csv'))
+    raw_drivers     = pd.read_csv(os.path.join(ROOT, 'data', 'raw', 'drivers.csv'))
+    raw_constructors= pd.read_csv(os.path.join(ROOT, 'data', 'raw', 'constructors.csv'))
+    raw_circuits    = pd.read_csv(os.path.join(ROOT, 'data', 'raw', 'circuits.csv'))
+
+    le_driver       = LabelEncoder().fit(df['driverId'].astype(str))
+    le_constructor  = LabelEncoder().fit(df['constructorId'].astype(str))
+    le_circuit      = LabelEncoder().fit(df['circuitId'].astype(str))
 
     return (xgb, df, df_history, raw_races, raw_drivers,
             raw_constructors, raw_circuits,
@@ -33,17 +37,16 @@ def load_all():
  raw_constructors, raw_circuits,
  le_driver, le_constructor, le_circuit) = load_all()
 
-# ── Helpers ────────────────────────────────────────────────────
 def get_driver_features(driver_id, constructor_id, circuit_id,
-                         grid, quali_pos, year, round_num,
-                         is_wet_race=0, precipitation_mm=0.0):
+                        grid, quali_pos, year, round_num,
+                        is_wet_race=0, precipitation_mm=0.0):
     d_str  = str(driver_id)
     c_str  = str(constructor_id)
     ci_str = str(circuit_id)
 
-    if d_str not in le_driver.classes_:   return None
-    if c_str not in le_constructor.classes_: return None
-    if ci_str not in le_circuit.classes_: return None
+    if d_str  not in le_driver.classes_:      return None
+    if c_str  not in le_constructor.classes_: return None
+    if ci_str not in le_circuit.classes_:     return None
 
     d_hist  = df_history[df_history['driverId'] == driver_id]['positionOrder']
     c_hist  = df_history[df_history['constructorId'] == constructor_id]['positionOrder']
@@ -72,18 +75,18 @@ def get_driver_features(driver_id, constructor_id, circuit_id,
     }
 
 # ── Dropdowns ──────────────────────────────────────────────────
-recent_race_ids   = raw_races[raw_races['year'] >= raw_races['year'].max() - 3]['raceId']
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-recent_results    = pd.read_csv(os.path.join(ROOT, 'data', 'raw', 'results.csv')).replace('\\N', np.nan)
-recent_driver_ids = recent_results[recent_results['raceId'].isin(recent_race_ids)]['driverId'].unique()
-recent_con_ids    = recent_results[recent_results['raceId'].isin(recent_race_ids)]['constructorId'].unique()
+ROOT             = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+recent_race_ids  = raw_races[raw_races['year'] >= raw_races['year'].max() - 3]['raceId']
+recent_results   = pd.read_csv(os.path.join(ROOT, 'data', 'raw', 'results.csv')).replace('\\N', np.nan)
+recent_driver_ids= recent_results[recent_results['raceId'].isin(recent_race_ids)]['driverId'].unique()
+recent_con_ids   = recent_results[recent_results['raceId'].isin(recent_race_ids)]['constructorId'].unique()
 
-recent_drivers = raw_drivers[raw_drivers['driverId'].isin(recent_driver_ids)].copy()
+recent_drivers   = raw_drivers[raw_drivers['driverId'].isin(recent_driver_ids)].copy()
 recent_drivers['label'] = recent_drivers['forename'] + ' ' + recent_drivers['surname']
 
-recent_cons = raw_constructors[raw_constructors['constructorId'].isin(recent_con_ids)].copy()
+recent_cons      = raw_constructors[raw_constructors['constructorId'].isin(recent_con_ids)].copy()
 
-circuit_options = raw_circuits[['circuitId', 'name', 'country']].copy()
+circuit_options  = raw_circuits[['circuitId', 'name', 'country']].copy()
 circuit_options['label'] = circuit_options['name'] + ' (' + circuit_options['country'] + ')'
 
 # ── UI ─────────────────────────────────────────────────────────
@@ -91,7 +94,6 @@ st.title("🎯 RACE LEADERBOARD PREDICTOR")
 st.markdown("---")
 st.markdown("Build your race grid below — add up to 20 drivers and predict the full finishing order.")
 
-# Race settings
 st.subheader("🏁 Race Settings")
 col1, col2, col3, col4 = st.columns(4)
 with col1:
@@ -101,15 +103,15 @@ with col2:
 with col3:
     round_num = st.number_input("Round Number", min_value=1,    max_value=24,   value=1)
 with col4:
-    weather_label  = st.selectbox("🌦️ Conditions", ["☀️ Dry", "🌧️ Wet"])
-    is_wet_race    = 1 if weather_label == "🌧️ Wet" else 0
-    precipitation  = st.number_input("Rainfall (mm)", min_value=0.0, 
-                                      max_value=50.0, value=0.0 if is_wet_race == 0 else 5.0,
-                                      step=0.5)
+    weather_label = st.selectbox("🌦️ Conditions", ["☀️ Dry", "🌧️ Wet"])
+    is_wet_race   = 1 if weather_label == "🌧️ Wet" else 0
+    precipitation = st.number_input("Rainfall (mm)", min_value=0.0, max_value=50.0,
+                                    value=0.0 if is_wet_race == 0 else 5.0, step=0.5)
 
 circuit_id = int(circuit_options[circuit_options['label'] == circuit_label]['circuitId'].iloc[0])
 
-# Grid builder
+st.markdown("---")
+
 st.subheader("🏎️ Build Your Grid")
 st.markdown("Add each driver to the grid with their starting position and constructor.")
 
@@ -146,7 +148,6 @@ with st.expander("➕ Add a Driver to the Grid", expanded=True):
             st.session_state.grid_entries = []
             st.info("Grid cleared.")
 
-# Show current grid
 if st.session_state.grid_entries:
     st.markdown("**Current Grid:**")
     grid_df = pd.DataFrame(st.session_state.grid_entries)[
@@ -161,9 +162,8 @@ if st.session_state.grid_entries:
 
 st.markdown("---")
 
-# Predict button
 if st.button("🏁 PREDICT RACE RESULT", disabled=len(st.session_state.grid_entries) < 2):
-    rows = []
+    rows    = []
     skipped = []
 
     for entry in st.session_state.grid_entries:
@@ -185,24 +185,20 @@ if st.button("🏁 PREDICT RACE RESULT", disabled=len(st.session_state.grid_entr
     if len(rows) < 2:
         st.error("Not enough valid drivers to predict. Please add more.")
     else:
-        pred_df   = pd.DataFrame(rows)
+        pred_df    = pd.DataFrame(rows)
         label_cols = ['driver_label', 'constructor_label']
         feat_cols  = [c for c in pred_df.columns if c not in label_cols]
 
         preds = xgb.predict(pred_df[feat_cols])
         pred_df['predicted_score'] = preds
-
-        # Rank by predicted score (lower = better finish)
         pred_df = pred_df.sort_values('predicted_score').reset_index(drop=True)
         pred_df['Predicted Position'] = range(1, len(pred_df) + 1)
 
-        # Medal emojis for top 3
         def medal(pos):
             return {1: '🥇', 2: '🥈', 3: '🥉'}.get(pos, f'P{pos}')
 
         pred_df['Pos'] = pred_df['Predicted Position'].apply(medal)
 
-        # ── Leaderboard table ──────────────────────────────────
         st.subheader("🏆 Predicted Race Leaderboard")
         leaderboard = pred_df[['Pos', 'driver_label', 'constructor_label', 'grid']].rename(columns={
             'driver_label':      'Driver',
@@ -212,8 +208,6 @@ if st.button("🏁 PREDICT RACE RESULT", disabled=len(st.session_state.grid_entr
         st.dataframe(leaderboard, use_container_width=True, hide_index=True)
 
         st.markdown("---")
-
-        # ── Bar chart ──────────────────────────────────────────
         st.subheader("📊 Predicted Finishing Order")
         chart_df = pred_df.copy()
         chart_df['color'] = chart_df['Predicted Position'].apply(
@@ -228,20 +222,14 @@ if st.button("🏁 PREDICT RACE RESULT", disabled=len(st.session_state.grid_entr
         ))
         fig.update_yaxes(autorange='reversed', title='Predicted Position', dtick=1)
         fig.update_xaxes(title='Driver')
-        fig.update_layout(
-            template='plotly_dark',
-            paper_bgcolor='#0f0f0f',
-            plot_bgcolor='#1a1a1a',
-            showlegend=False
-        )
+        fig.update_layout(template='plotly_dark', paper_bgcolor='#0f0f0f',
+                          plot_bgcolor='#1a1a1a', showlegend=False)
         st.plotly_chart(fig, use_container_width=True)
 
-        # ── Podium spotlight ───────────────────────────────────
         st.markdown("---")
         st.subheader("🏆 Podium")
-        top3 = pred_df.head(3)
+        top3       = pred_df.head(3)
         num_podium = len(top3)
-
         p1, p2, p3 = st.columns(3)
         if num_podium >= 1:
             p1.success(f"🥇 1st\n\n**{top3.iloc[0]['driver_label']}**\n\n{top3.iloc[0]['constructor_label']}")
@@ -250,8 +238,7 @@ if st.button("🏁 PREDICT RACE RESULT", disabled=len(st.session_state.grid_entr
         if num_podium >= 3:
             p3.warning(f"🥉 3rd\n\n**{top3.iloc[2]['driver_label']}**\n\n{top3.iloc[2]['constructor_label']}")
         if num_podium < 3:
-            st.info(f"ℹ️ Add at least 3 drivers to see the full podium.")
-
+            st.info("ℹ️ Add at least 3 drivers to see the full podium.")
 else:
     if len(st.session_state.grid_entries) < 2:
         st.info("👆 Add at least 2 drivers to the grid to enable prediction.")

@@ -1,18 +1,18 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import os
 import plotly.express as px
 
 st.set_page_config(page_title="EDA", page_icon="📊", layout="wide")
 
-import os
 css_path = os.path.join(os.path.dirname(__file__), '..', 'style.css')
 with open(css_path) as f:
     st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 
 @st.cache_data
 def load_data():
-   ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    ROOT         = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     results      = pd.read_csv(os.path.join(ROOT, 'data', 'raw', 'results.csv')).replace('\\N', np.nan)
     drivers      = pd.read_csv(os.path.join(ROOT, 'data', 'raw', 'drivers.csv'))
     constructors = pd.read_csv(os.path.join(ROOT, 'data', 'raw', 'constructors.csv'))
@@ -60,12 +60,12 @@ with tab2:
 
 with tab3:
     st.subheader("Constructor Wins Per Year")
-    wins_con = results[results['positionOrder'] == 1].merge(
+    wins_con  = results[results['positionOrder'] == 1].merge(
         races[['raceId', 'year']], on='raceId'
     ).merge(constructors[['constructorId', 'name']], on='constructorId')
-    top_teams   = wins_con['name'].value_counts().head(8).index
-    data_plot   = wins_con[wins_con['name'].isin(top_teams)]
-    grouped     = data_plot.groupby(['year', 'name']).size().reset_index(name='wins')
+    top_teams = wins_con['name'].value_counts().head(8).index
+    data_plot = wins_con[wins_con['name'].isin(top_teams)]
+    grouped   = data_plot.groupby(['year', 'name']).size().reset_index(name='wins')
     fig3 = px.area(grouped, x='year', y='wins', color='name',
                    template='plotly_dark',
                    labels={'year': 'Year', 'wins': 'Wins', 'name': 'Constructor'})
